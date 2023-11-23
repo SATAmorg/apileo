@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks Frontend</title>
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            background-color: #61dafb;
+            margin: 0;
+        }
+
+        form {
+            max-width: 400px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #61dafb;
+            color: #fff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #47a7f5;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 20px;
+        }
+
+        li {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button.update, button.delete {
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button.delete {
+            background-color: #f44336;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Lista de Tarefas</h1>
+    
+    <!-- Formulário para adicionar uma nova tarefa -->
+    <form id="add-task-form">
+        <label for="task-title">Título da Tarefa:</label>
+        <input type="text" id="task-title" required>
+        <button type="submit">Adicionar Tarefa</button>
+    </form>
+    
+    <ul id="tasks-list"></ul>
+
+    <script>
+        // Função para fazer uma solicitação GET para o endpoint de tarefas
+        function getTasks() {
+            fetch("http://127.0.0.1:8000/tasks/", { mode: 'cors' })
+                .then(response => response.json())
+                .then(data => {
+                    // Limpar a lista antes de adicionar os novos itens
+                    document.getElementById("tasks-list").innerHTML = "";
+        
+                    // Adicionar cada tarefa à lista
+                    data.forEach(task => {
+                        const li = document.createElement("li");
+                        const startDate = formatDate(task.start_date);
+                        const endDate = task.end_date ? formatDate(task.end_date) : 'Tarefa em andamento';
+                        li.textContent = `Tarefa: ${task.title}, Início: ${startDate}, Término: ${endDate}`;
+
+                        // Botão para atualizar a tarefa
+                        const updateButton = document.createElement("button");
+                        updateButton.textContent = "Atualizar";
+                        updateButton.addEventListener("click", () => {
+                            updateTask(task.id, task.title, task.start_date, task.end_date);
+                        });
+
+                        // Botão para excluir a tarefa
+                        const deleteButton = document.createElement("button");
+                        deleteButton.textContent = "Excluir";
+                        deleteButton.addEventListener("click", () => {
+                            deleteTask(task.id);
+                        });
+
+                        li.appendChild(updateButton);
+                        li.appendChild(deleteButton);
+
+                        document.getElementById("tasks-list").appendChild(li);
+                    });
+                })
+                .catch(error => {
+                    console.error("Erro ao obter as tarefas:", error);
+                });
+        }
+        
+        // Função para enviar uma solicitação POST para adicionar uma nova tarefa
+        function addTask(title) {
+            fetch("http://127.0.0.1:8000/tasks/", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title
+                }),
+                mode: 'cors'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Nova tarefa adicionada:", data);
+                // Atualizar a lista de tarefas após adicionar uma nova
+                getTasks();
+            })
+            .catch(error => {
+                console.error("Erro ao adicionar a tarefa:", error);
+            });
+        }
+
+        // Função para enviar uma solicitação PUT para atualizar uma tarefa existente
+        function updateTask(taskId, title, startDate, endDate) {
+            fetch(`http://127.0.0.1:8000/tasks/${taskId}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    start_date: startDate,
+                    end_date: endDate,
+                    done: true  // Simples exemplo de atualização para marcá-la como concluída
+                }),
+                mode: 'cors'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Tarefa atualizada:", data);
+                // Atualizar a lista de tarefas após atualizar
+                getTasks();
+            })
+            .catch(error => {
+                console.error("Erro ao atualizar a tarefa:", error);
+            });
+        }
+
+        // Função para enviar uma solicitação DELETE para excluir uma tarefa existente
+        function deleteTask(taskId) {
+            fetch(`http://127.0.0.1:8000/tasks/${taskId}/`, {
+                method: 'DELETE',
+                mode: 'cors'
+            })
+            .then(response => {
+                console.log("Tarefa excluída com sucesso.");
+                // Atualizar a lista de tarefas após excluir
+                getTasks();
+            })
+            .catch(error => {
+                console.error("Erro ao excluir a tarefa:", error);
+            });
+        }
+
+        // Função para formatar a data
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+            const formattedDate = new Date(dateString + 'T00:00:00Z');
+            formattedDate.setDate(formattedDate.getDate() + 1); // Adiciona um dia
+            return formattedDate.toLocaleDateString(undefined, options);
+        }
+
+        // Adicionar um ouvinte de evento para o formulário de adição de tarefa
+        document.getElementById("add-task-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById("task-title").value;
+
+            // Verificar se o campo foi preenchido antes de adicionar a tarefa
+            if (title) {
+                addTask(title);
+            } else {
+                alert("Por favor, preencha o campo de título.");
+            }
+        });
+
+        // Chamar a função para obter as tarefas quando a página estiver totalmente carregada
+        document.addEventListener("DOMContentLoaded", function() {
+            getTasks();
+        });
+    </script>
+
+</body>
+</html>
